@@ -95,5 +95,5 @@ def read_TFRecord():
 
 
 if __name__ == "__main__":
-    split_training_and_testing_sets()
+    # split_training_and_testing_sets()
     read_TFRecord()

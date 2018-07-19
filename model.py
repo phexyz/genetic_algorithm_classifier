@@ -7,8 +7,8 @@ import datetime
 def conv(input, weights_name, bias_name, parameters, activation="relu", pool=False):
 
     with tf.variable_scope(weights_name[:-2]):
-        weights = parameters[weights_name]
-        bias = parameters[bias_name]
+        weights = tf.constant(parameters[weights_name], dtype=tf.float16)
+        bias = tf.constant(parameters[bias_name], dtype=tf.float16)
 
         conv_no_bias = tf.nn.conv2d(input=input, filter=weights, strides=[0, 1, 1, 0], padding="SAME", name="without_bias")
         conv_z = tf.nn.bias_add(conv_no_bias, bias, name="bias_add")
@@ -23,21 +23,26 @@ def conv(input, weights_name, bias_name, parameters, activation="relu", pool=Fal
 
     return conv_a
 
-def dense(input, weights_name,  bias_name, parameters, activation='relu'):
+def dense(input, weights_name,  bias_name, parameters, activation='relu', output=False):
+
+    print("dense layer {}".format(weights_name))
 
     with tf.variable_scope(weights_name[:-2]):
 
-        weights = parameters[weights_name]
-        bias = parameters[bias_name]
+        if output:
+            shape_pre_layer = input.get_shape().as_list()
+            weights = tf.get_variable(name="weights", shape=[shape_pre_layer[1], 5], dtype=tf.float16)
+            bias = tf.get_variable(name="bias", shape=[5, ], dtype=tf.float16)
+        else:
+            weights = tf.constant(parameters[weights_name], dtype=tf.float16)
+            bias = tf.constant(parameters[bias_name], dtype=tf.float16)
 
-        dense_no_bias = tf.layers.dense(inputs=input, units=bias.shape[0],
-                                        name="without_bias", use_bias=True, kernel_initializer=tf.initializers.zeros)
-        dense_kernel = tf.get_default_graph().get_tensor_by_name( weights_name[:-2] + '/without_bias' + '/' + 'kernel:0')
-        tf.assign(dense_kernel, weights)
-        dense_z = tf.nn.bias_add(dense_no_bias, bias, name="bias_add")
+        dense_no_bias = tf.matmul(input, weights)
+        dense_z = tf.nn.bias_add(dense_no_bias, bias)
 
         if activation == None:
             return  dense_z
+
 
         dense_a = tf.nn.relu(dense_z, 'relu')
 
@@ -84,9 +89,8 @@ class Vgg16(object):
         self.conv5_3_flatten = tf.contrib.layers.flatten(self.conv5_3)
         self.fc6 = dense(self.conv5_3_flatten, "fc6_W", bias_name="fc7_b", parameters=parameters)
         self.fc7 = dense(self.fc6, "fc7_W", bias_name="fc7_b", parameters=parameters)
-        self.fc8 = dense(self.fc7, "fc8_W", bias_name="fc8_b", parameters=parameters, activation=None)
-        self.fc9 = tf.nn.softmax(self.fc8, name="softmax_output")
-        self.Y_hat = tf.argmax(self.fc9, axis=0, name="Y_hat")
+        self.fc8 = dense(self.fc7, "fc8_W", bias_name="fc8_b", parameters=parameters, output=True)
+        self.Y_hat = tf.nn.softmax(self.fc8, name="softmax_output")
 
         self.loss = tf.losses.softmax_cross_entropy
 
@@ -99,6 +103,7 @@ class Vgg16(object):
         self.file_write = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
 
     def save_mode(self):
+
         saver = tf.train.Saver()
         saver.save(self.sess, os.path.join(os.getcwd(), "model"))
 
@@ -109,16 +114,18 @@ class Vgg16(object):
         self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "fc8")
         self.train_op = tf.train.AdamOptimizer(0.01).minimize(self.loss(batch_Y, self.Y_hat))
 
+        self.sess.run(tf.global_variables_initializer())
         for iter in range(1000):
-
+            print("iteration {}".format(iter))
             with self.sess as sess:
-                sess.run(self.train_op)
+                sess.run(self.train_op, feed_dict={self.X : batch_X})
 
 
 
 def main(argv):
 
     model = Vgg16()
+    model.train()
 
 
 if __name__ == '__main__':

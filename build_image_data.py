@@ -16,7 +16,7 @@ tf.app.flags.DEFINE_string('train_directory', './flowers/train/',
                            'Training data directory')
 tf.app.flags.DEFINE_string('validation_directory', './flowers/test',
                            'Validation data directory')
-tf.app.flags.DEFINE_string('output_directory', '/tmp/',
+tf.app.flags.DEFINE_string('output_directory', './flowers/',
                            'Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 4,
