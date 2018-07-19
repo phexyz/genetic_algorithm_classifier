@@ -86,10 +86,7 @@ def read_TFRecord():
     train_dataset = train_dataset.map(_parse_function)
     train_dataset = train_dataset.batch(batch_size=10)
 
-    iterator = train_dataset.make_one_shot_iterator()
-    next_element = iterator.get_next()
-    batch = tf.Session().run(next_element)
-    print(batch[0].shape, batch[1].shape)
+    iterator = train_dataset.make_initializable_iterator()
 
     return iterator
 
