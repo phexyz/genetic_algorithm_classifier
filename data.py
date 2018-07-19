@@ -1,7 +1,17 @@
 import os
 import tensorflow as tf
+import numpy as np
+from PIL import Image
 from random import shuffle
 from math import floor
+from dir_traversal_tfrecord import tfrecord_auto_traversal
+
+
+def resize_image(image_dir, output_dir):
+
+    original_image = Image.open(image_dir)
+    resize_image = original_image.resize((244, 244))
+    resize_image.save(output_dir, "JPEG", optimizer=True)
 
 
 def get_file_list_from_dir(datadir, extension=None):
@@ -42,15 +52,48 @@ def split_training_and_testing_sets():
 
             if not os.path.exists("./train/{0}/".format(folder)):
                 os.makedirs("./train/{0}/".format(folder))
-            os.rename(os.path.join(data_dir, folder, file), "./train/{0}/{1}".format(folder, file))
+
+            resize_image(os.path.join(data_dir, folder, file), "./train/{0}/{1}".format(folder, file))
 
         for file in testing:
 
             if not os.path.exists("./test/{0}/".format(folder)):
                 os.makedirs("./test/{0}/".format(folder))
 
-            os.rename(os.path.join(data_dir, folder, file), "./test/{0}/{1}".format(folder, file))
+            resize_image(os.path.join(data_dir, folder, file), "./test/{0}/{1}".format(folder, file))
+
+def _parse_function(example):
+
+    features = tf.parse_single_example(example, features={
+        "image/encoded": tf.FixedLenFeature([], tf.string),
+        "image/height": tf.FixedLenFeature([], tf.int64),
+        "image/width": tf.FixedLenFeature([], tf.int64),
+        "image/filename": tf.FixedLenFeature([], tf.string),
+        "image/class/label": tf.FixedLenFeature([], tf.int64), })
+
+    image_encode = features["image/encoded"]
+    image_raw = tf.image.decode_jpeg(image_encode, channels=3)
+    label = tf.one_hot(features["image/class/label"] - 1, 5)
+    return image_raw, label
+
+
+def read_TFRecord():
+
+    filename_queue = filter(lambda x: "train" in x, tfrecord_auto_traversal())
+    filename_queue = map(lambda x: os.path.join("flowers/", x), filename_queue)
+    train_dataset = tf.data.TFRecordDataset(filename_queue)
+
+    train_dataset = train_dataset.map(_parse_function)
+    train_dataset = train_dataset.batch(batch_size=10)
+
+    iterator = train_dataset.make_one_shot_iterator()
+    next_element = iterator.get_next()
+    batch = tf.Session().run(next_element)
+    print(batch[0].shape, batch[1].shape)
+
+    return iterator
 
 
 if __name__ == "__main__":
     split_training_and_testing_sets()
+    read_TFRecord()

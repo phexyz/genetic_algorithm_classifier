@@ -14,9 +14,9 @@ from PIL import Image
 
 tf.app.flags.DEFINE_string('train_directory', './flowers/train/',
                            'Training data directory')
-tf.app.flags.DEFINE_string('validation_directory', './flowers/test/',
+tf.app.flags.DEFINE_string('validation_directory', './flowers/test',
                            'Validation data directory')
-tf.app.flags.DEFINE_string('output_directory', './flowers/',
+tf.app.flags.DEFINE_string('output_directory', '/tmp/',
                            'Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 4,
@@ -367,6 +367,13 @@ def main(unused_argv):
     # Run it!
     _process_dataset('validation', FLAGS.validation_directory,
                      FLAGS.validation_shards, FLAGS.labels_file)
+
+    print("------------------------------------------------------------")
+    print("------------------------------------------------------------")
+    print("------------------------------------------------------------")
+    print("------------------------------------------------------------")
+    print("------------------------------------------------------------")
+    print("------------------------------------------------------------")
     _process_dataset('train', FLAGS.train_directory,
                      FLAGS.train_shards, FLAGS.labels_file)
 

@@ -1,3 +1,4 @@
+from data import *
 import tensorflow as tf
 import numpy as np
 import os
@@ -25,6 +26,7 @@ def conv(input, weights_name, bias_name, parameters, activation="relu", pool=Fal
 def dense(input, weights_name,  bias_name, parameters, activation='relu'):
 
     with tf.variable_scope(weights_name[:-2]):
+
         weights = parameters[weights_name]
         bias = parameters[bias_name]
 
@@ -61,14 +63,13 @@ class Vgg16(object):
 
     def build_model(self, parameters):
 
-        root_logdir = "tf_logs"
-        log_dir = os.path.join(root_logdir, str(datetime.datetime.now()))
+        self.sess = tf.Session()
+
+        self.iterator = read_TFRecord()
 
         self.X = tf.placeholder(dtype=tf.float16, shape=[None, 224, 224, 3], name="input")
-
         self.conv1_1 = conv(self.X, "conv1_1_W", bias_name="conv1_1_b", parameters=parameters)
         self.conv1_2 = conv(self.conv1_1, "conv1_2_W", bias_name="conv1_2_b", parameters=parameters, pool=True)
-
         self.conv2_1 = conv(self.conv1_2, "conv2_1_W", bias_name="conv2_1_b", parameters=parameters)
         self.conv2_2 = conv(self.conv2_1, "conv2_2_W", bias_name="conv2_2_b", parameters=parameters, pool=True)
         self.conv3_1 = conv(self.conv2_2, "conv3_1_W", bias_name="conv3_1_b", parameters=parameters)
@@ -85,14 +86,35 @@ class Vgg16(object):
         self.fc7 = dense(self.fc6, "fc7_W", bias_name="fc7_b", parameters=parameters)
         self.fc8 = dense(self.fc7, "fc8_W", bias_name="fc8_b", parameters=parameters, activation=None)
         self.fc9 = tf.nn.softmax(self.fc8, name="softmax_output")
-
         self.Y_hat = tf.argmax(self.fc9, axis=0, name="Y_hat")
 
-        Y_hat_summary = tf.summary.tensor_summary(name="Y_hat_summary", tensor=Y_hat)
-        file_write = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
+        self.loss = tf.losses.softmax_cross_entropy
 
-        # saver = tf.train.Saver()
-        # saver.save(sess, os.path.join(os.getcwd(), "model"))
+
+    def add_summery(self):
+
+        root_logdir = "tf_logs"
+        log_dir = os.path.join(root_logdir, str(datetime.datetime.now()))
+        self.Y_hat_summary = tf.summary.tensor_summary(name="Y_hat_summary", tensor=self.Y_hat)
+        self.file_write = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
+
+    def save_mode(self):
+        saver = tf.train.Saver()
+        saver.save(self.sess, os.path.join(os.getcwd(), "model"))
+
+    def train(self):
+
+        batch_X, batch_Y = self.iterator.get_next()
+
+        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "fc8")
+        self.train_op = tf.train.AdamOptimizer(0.01).minimize(self.loss(batch_Y, self.Y_hat))
+
+        for iter in range(1000):
+
+            with self.sess as sess:
+                sess.run(self.train_op)
+
+
 
 def main(argv):
 
