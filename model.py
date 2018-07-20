@@ -20,8 +20,12 @@ def xavier_init(shape, name='', uniform=True):
 
 def get_weights_bias(parameters, layer_name):
 
-    weights = tf.Variable(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
-    bias = tf.Variable(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
+    if "fc" in layer_name:
+        weights = tf.Variable(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
+        bias = tf.Variable(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
+    else:
+        weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
+        bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
 
     return weights, bias
 
