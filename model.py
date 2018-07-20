@@ -20,12 +20,9 @@ def xavier_init(shape, name='', uniform=True):
 
 def get_weights_bias(parameters, layer_name):
 
-    if "fc" in layer_name:
-        weights = tf.Variable(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
-        bias = tf.Variable(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
-    else:
-        weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
-        bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
+
+    weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
+    bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
 
     return weights, bias
 
@@ -153,9 +150,7 @@ class Vgg16(object):
 
     def train(self):
 
-        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8") +\
-            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc7") +\
-            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc6")
+        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8")
 
         for var in self.train_variables:
             print(var.name)
