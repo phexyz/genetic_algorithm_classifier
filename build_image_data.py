@@ -19,9 +19,9 @@ tf.app.flags.DEFINE_string('validation_directory', './flowers/test',
 tf.app.flags.DEFINE_string('output_directory', './flowers/',
                            'Output data directory')
 
-tf.app.flags.DEFINE_integer('train_shards', 4,
+tf.app.flags.DEFINE_integer('train_shards', 0,
                             'Number of shards in training TFRecord files.')
-tf.app.flags.DEFINE_integer('validation_shards', 0,
+tf.app.flags.DEFINE_integer('validation_shards', 4,
                             'Number of shards in validation TFRecord files.')
 
 tf.app.flags.DEFINE_integer('num_threads', 4,

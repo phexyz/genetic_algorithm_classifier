@@ -4,10 +4,24 @@ import numpy as np
 import os
 import datetime
 
+
+def xavier_init(shape, name='', uniform=True):
+    num_input = sum(shape[:-1])
+    num_output = shape[-1]
+
+    if uniform:
+        init_range = tf.sqrt(6.0 / (num_input + num_output))
+        init_value = tf.random_uniform_initializer(-init_range, init_range)
+    else:
+        stddev = tf.sqrt(3.0 / (num_input + num_output))
+        init_value = tf.truncated_normal_initializer(stddev=stddev)
+
+    return tf.get_variable(name, shape=shape, initializer=init_value)
+
 def get_weights_bias(parameters, layer_name):
 
-    weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32)
-    bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32)
+    weights = tf.Variable(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
+    bias = tf.Variable(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
 
     return weights, bias
 
@@ -41,9 +55,12 @@ def dense(input, layer_name, weights_bias, activation='relu', output=False):
             print("2")
             shape_pre_layer = input.get_shape().as_list()
             print("3")
-            weights = tf.get_variable(name="weights", shape=[shape_pre_layer[1], 5], dtype=tf.float32)
+            weights = xavier_init(shape=[shape_pre_layer[1], 5], name="weights")
+            # weights = tf.get_variable(name="weights", shape=[shape_pre_layer[1], 5], dtype=tf.float32,
+            #                           initializer=tf.initializers.)
             print("4")
-            bias = tf.get_variable(name="bias", shape=[5, ], dtype=tf.float32)
+            bias = xavier_init(shape=[5,], name="bias")
+            # bias = tf.get_variable(name="bias", shape=[5, ], dtype=tf.float32)
             print("5")
         else:
             weights, bias = weights_bias
@@ -132,8 +149,14 @@ class Vgg16(object):
 
     def train(self):
 
-        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "fc8")
-        self.train_op = tf.train.AdamOptimizer(0.01).minimize(self.loss, var_list=self.train_variables)
+        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8") +\
+            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc7") +\
+            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc6")
+
+        for var in self.train_variables:
+            print(var.name)
+
+        self.train_op = tf.train.AdamOptimizer(0.00075).minimize(self.loss, var_list=self.train_variables)
 
         self.sess.run(tf.global_variables_initializer())
 
@@ -141,23 +164,28 @@ class Vgg16(object):
         for epoch in range(num_epochs):
             print("epoch {}".format(epoch))
             self.sess.run(self.iterator.initializer)
+
             num_iter = 0
             try:
                 while True:
-                    print(num_iter)
                     num_iter += 1
-                    summary, _ = self.sess.run([self.loss_summary, self.train_op])
+                    loss, summary, _ = self.sess.run([self.loss, self.loss_summary, self.train_op])
                     self.file_writer.add_summary(summary)
+
+                    with open("log.txt", "a+") as f:
+                        f.write("\n{}, {}".format(loss, tf.train.get_global_step()))
+
             except tf.errors.OutOfRangeError:
                 pass
 
-        self.save_mode()
+            if epoch % 100 == 0:
+
+                self.save_mode()
 
 
 def main(argv):
 
     model = Vgg16()
-    model.load_model()
     model.train()
 
 

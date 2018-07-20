@@ -85,6 +85,7 @@ def read_TFRecord():
 
     train_dataset = train_dataset.map(_parse_function)
     train_dataset = train_dataset.batch(batch_size=10)
+    train_dataset = train_dataset.shuffle(buffer_size=10)
 
     iterator = train_dataset.make_initializable_iterator()
 
