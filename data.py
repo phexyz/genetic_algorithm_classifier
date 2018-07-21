@@ -77,15 +77,17 @@ def _parse_function(example):
     return image_raw, label
 
 
-def read_TFRecord():
+def read_TFRecord(dataset="train"):
 
-    filename_queue = filter(lambda x: "train" in x, tfrecord_auto_traversal())
-    filename_queue = map(lambda x: os.path.join("flowers/", x), filename_queue)
+    filename_queue = filter(lambda x: dataset in x, tfrecord_auto_traversal())
+    filename_queue = list(map(lambda x: os.path.join("flowers/", x), filename_queue))
     train_dataset = tf.data.TFRecordDataset(filename_queue)
 
     train_dataset = train_dataset.map(_parse_function)
-    train_dataset = train_dataset.batch(batch_size=10)
-    train_dataset = train_dataset.shuffle(buffer_size=10)
+
+    if dataset == "train":
+        train_dataset = train_dataset.batch(batch_size=10)
+        train_dataset = train_dataset.shuffle(buffer_size=10)
 
     iterator = train_dataset.make_initializable_iterator()
 

@@ -1,5 +1,6 @@
 from data import *
 import tensorflow as tf
+from tensorflow.python import debug as tf_debug
 import numpy as np
 import os
 import datetime
@@ -11,18 +12,27 @@ def xavier_init(shape, name='', uniform=True):
 
     if uniform:
         init_range = tf.sqrt(6.0 / (num_input + num_output))
-        init_value = tf.random_uniform_initializer(-init_range, init_range)
+        init_value = tf.random_uniform(shape=shape, minval=-init_range, maxval=init_range)
     else:
         stddev = tf.sqrt(3.0 / (num_input + num_output))
-        init_value = tf.truncated_normal_initializer(stddev=stddev)
+        init_value = tf.truncated_normal(shape=shape, stddev=stddev)
 
-    return tf.get_variable(name, shape=shape, initializer=init_value)
+    return tf.Variable(init_value, name=name)
 
 def get_weights_bias(parameters, layer_name):
 
+    if "fc" in layer_name:
 
-    weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
-    bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
+        if "8" in layer_name:
+            weights = xavier_init(shape=[parameters[layer_name + "_W"].shape[0], 5], name="weights")
+            bias = xavier_init(shape=[5,], name="bias")
+        else:
+            weights = tf.Variable(parameters[layer_name + "_W"], name="{}/weights".format(layer_name))
+            bias = tf.Variable(parameters[layer_name + "_b"], name="{}/bias".format(layer_name))
+
+    else:
+        weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
+        bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
 
     return weights, bias
 
@@ -127,16 +137,14 @@ class Vgg16(object):
         self.Y = self.batch[1]
         self.loss = tf.losses.softmax_cross_entropy(self.Y, self.Y_hat)
 
-        self.add_summery()
-
 
     def add_summery(self):
 
         root_logdir = "tf_logs"
         log_dir = os.path.join(root_logdir, str(datetime.datetime.now()))
         self.loss_summary = tf.summary.scalar(name="loss", tensor=self.loss)
-
         self.file_writer = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
+
 
     def save_mode(self):
 
@@ -150,7 +158,9 @@ class Vgg16(object):
 
     def train(self):
 
-        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8")
+        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8") + \
+                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc7") + \
+                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc6")
 
         for var in self.train_variables:
             print(var.name)
@@ -158,6 +168,10 @@ class Vgg16(object):
         self.train_op = tf.train.AdamOptimizer(0.00075).minimize(self.loss, var_list=self.train_variables)
 
         self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.local_variables_initializer())
+
+        self.add_summery()
+        print(self.sess.run(tf.report_uninitialized_variables()))
 
         num_epochs = 1000
         for epoch in range(num_epochs):
@@ -180,6 +194,32 @@ class Vgg16(object):
             if epoch % 100 == 0:
 
                 self.save_mode()
+
+
+    def test(self):
+
+        self.test_iterator = read_TFRecord(dataset="test")
+        self.batch = self.test_iterator.get_next()
+        self.batch_accuracy, _ = tf.metrics.accuracy(self.Y, self.Y_hat)
+        accuracy = 0
+        counter = 0
+
+        try:
+            while True:
+                batch_accuracy = self.sess.run(self.batch_accuracy)
+                accuracy += batch_accuracy
+                counter += 1
+
+        except tf.errors.OutOfRangeError:
+            pass
+
+
+        print(accuracy / counter)
+
+
+
+
+
 
 
 def main(argv):
