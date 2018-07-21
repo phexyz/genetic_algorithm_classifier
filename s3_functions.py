@@ -1,5 +1,6 @@
 import os
-import boto
+import boto3
+import botocore
 from boto.s3.key import Key
 
 

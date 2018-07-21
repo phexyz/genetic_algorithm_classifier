@@ -4,6 +4,7 @@ from tensorflow.python import debug as tf_debug
 import numpy as np
 import os
 import datetime
+from s3_functions import *
 
 
 def xavier_init(shape, name='', uniform=True):
