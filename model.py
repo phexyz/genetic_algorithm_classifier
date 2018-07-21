@@ -153,8 +153,11 @@ class Vgg16(object):
 
     def load_model(self):
 
+        mode_root_dir = "./models"
+        sub_dir = "07-19-2018"
+
         saver = tf.train.Saver()
-        saver.restore(self.sess, "model")
+        saver.restore(self.sess, os.path.join)
 
     def train(self):
 
