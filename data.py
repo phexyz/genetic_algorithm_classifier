@@ -87,9 +87,9 @@ def read_TFRecord(dataset_name="train"):
 
     dataset = dataset.map(_parse_function)
 
-    if dataset == "train":
-        dataset = dataset.batch(batch_size=10)
-        dataset = dataset.shuffle(buffer_size=10)
+    if dataset_name == "train":
+        dataset = dataset.batch(batch_size=50)
+        dataset = dataset.shuffle(buffer_size=50)
 
     else:
         dataset = dataset.batch(batch_size=1)
