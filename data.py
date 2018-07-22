@@ -96,11 +96,6 @@ def read_TFRecord(dataset_name="train"):
 
     iterator = dataset.make_initializable_iterator()
 
-    with tf.Session() as sess:
-        sess.run(iterator.initializer)
-        nx = sess.run(iterator.get_next())
-        print(nx[0].shape)
-
     return iterator
 
 
