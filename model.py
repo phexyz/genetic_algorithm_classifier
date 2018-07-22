@@ -218,7 +218,14 @@ class Vgg16(object):
 
 
 
+    def predict(self, input):
 
+        self.X = tf.placeholder(dtype=tf.float32, shape=[None, 224, 224, 3], name="input")
+        self.prediction = tf.argmax(self.Y_hat)
+
+        prediction = self.sess.run(self.prediction, self.X)
+
+        return prediction
 
 
 
