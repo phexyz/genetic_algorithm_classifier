@@ -106,8 +106,16 @@ class Vgg16(object):
 
     def build_model(self, parameters):
 
-        self.iterator = read_TFRecord()
+        self.train_iterator = read_TFRecord("train")
+        self.test_iterator = read_TFRecord("validation")
+
+        self.handle = tf.placeholder(tf.string, shape=[])
+        self.iterator = tf.data.Iterator.from_string_handle(
+            self.handle, self.train_iterator.output_types)
         self.sess = tf.Session()
+
+        self.test_iterator_handle = self.sess.run(self.test_iterator.string_handle())
+        self.train_iterator_handle = self.sess.run(self.train_iterator.string_handle())
 
         self.batch = self.iterator.get_next()
 
@@ -134,6 +142,13 @@ class Vgg16(object):
         self.Y = self.batch[1]
         self.loss = tf.losses.softmax_cross_entropy(self.Y, self.Y_hat)
 
+        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8") + \
+                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc7") + \
+                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc6")
+
+        self.save_mode()
+        self.load_model()
+
     def add_summery(self):
 
         root_logdir = "tf_logs"
@@ -145,22 +160,16 @@ class Vgg16(object):
 
         if not os.path.exists("model"):
             os.makedirs("model")
-        saver = tf.train.Saver()
-        saver.save(self.sess, os.path.join(os.getcwd(), "model/"))
+        self.saver = tf.train.Saver(var_list=self.train_variables)
 
     def load_model(self):
 
-        mode_root_dir = "./models"
-        sub_dir = "07-19-2018"
-
-        saver = tf.train.Saver()
-        saver.restore(self.sess, os.path.join)
+        if os.path.exists("model/"):
+            self.saver.restore(self.sess, save_path="model/model")
+        else:
+            print("model doesn't exist")
 
     def train(self):
-
-        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8") + \
-                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc7") + \
-                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc6")
 
         for var in self.train_variables:
             print(var.name)
@@ -168,62 +177,60 @@ class Vgg16(object):
         self.train_op = tf.train.AdamOptimizer(0.00075).minimize(self.loss, var_list=self.train_variables)
 
         self.sess.run(tf.global_variables_initializer())
-        self.sess.run(tf.local_variables_initializer())
-
         self.add_summery()
-        print("------------------------------------------------------------------")
-        for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
-            print(var.name)
 
-    #         print(self.sess.run(tf.report_uninitialized_variables()))
+        num_epochs = 1000
+        for epoch in range(num_epochs):
+            print("epoch {}".format(epoch))
+            self.sess.run(self.train_iterator.initializer)
 
-    #         num_epochs = 1000
-    #         for epoch in range(num_epochs):
-    #             print("epoch {}".format(epoch))
-    #             self.sess.run(self.iterator.initializer)
+            num_iter = 0
+            try:
+                while True:
+                    num_iter += 1
+                    loss, summary, _ = self.sess.run([self.loss, self.loss_summary, self.train_op],
+                                                     feed_dict={self.handle : self.train_iterator_handle})
+                    self.file_writer.add_summary(summary)
+                    print num_iter,
 
-    #             num_iter = 0
-    #             try:
-    #                 while True:
-    #                     num_iter += 1
-    #                     loss, summary, _ = self.sess.run([self.loss, self.loss_summary, self.train_op])
-    #                     self.file_writer.add_summary(summary)
-    #                     print num_iter,
-    #                     download_folder("model")
+                    # download_folder("model")
 
-    #             except tf.errors.OutOfRangeError:
-    #                 pass
+            except tf.errors.OutOfRangeError:
+                pass
 
-    #             if epoch % 50 == 0 and epoch > 0:
+            if epoch % 50 == 0:
 
-    #               self.save_mode()
-    # #               upload_folder_to_s3("model")
+                self.saver.save(self.sess, os.path.join(os.getcwd(), "model/"))
+
+                # upload_folder_to_s3("model")
 
     def test(self):
 
-        self.test_iterator = read_TFRecord(dataset="test")
-        self.batch = self.test_iterator.get_next()
-        self.batch_accuracy, _ = tf.metrics.accuracy(self.Y, self.Y_hat)
+        self.batch_correct = tf.reduce_sum(tf.cast(tf.equal(tf.argmax(self.Y, -1), tf.argmax(self.Y_hat, -1)), tf.float32))
         accuracy = 0
         counter = 0
 
+        self.sess.run([tf.global_variables_initializer(), self.test_iterator.initializer])
         try:
             while True:
-                batch_accuracy = self.sess.run(self.batch_accuracy)
+                batch_accuracy = self.sess.run(self.batch_correct, feed_dict={self.handle : self.test_iterator_handle})
                 accuracy += batch_accuracy
                 counter += 1
+                print(counter)
+
 
         except tf.errors.OutOfRangeError:
             pass
 
-        print(accuracy / counter)
-
+        print("coutner", counter)
+        print("accuracy", accuracy)
 
     def predict(self, input):
 
         self.X = tf.placeholder(dtype=tf.float32, shape=[None, 224, 224, 3], name="input")
         self.prediction = tf.argmax(self.Y_hat)
 
+        self.sess.run(tf.global_variables_initializer())
         prediction = self.sess.run(self.prediction, self.X)
 
         return prediction
@@ -233,7 +240,7 @@ class Vgg16(object):
 def main(argv):
 
     model = Vgg16()
-    model.train()
+    model.test()
 
 
 if __name__ == '__main__':

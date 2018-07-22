@@ -77,23 +77,33 @@ def _parse_function(example):
     return image_raw, label
 
 
-def read_TFRecord(dataset="train"):
+def read_TFRecord(dataset_name="train"):
 
-    filename_queue = filter(lambda x: dataset in x, tfrecord_auto_traversal())
+    filename_queue = filter(lambda x: dataset_name in x, tfrecord_auto_traversal())
     filename_queue = list(map(lambda x: os.path.join("flowers/", x), filename_queue))
-    train_dataset = tf.data.TFRecordDataset(filename_queue)
 
-    train_dataset = train_dataset.map(_parse_function)
+    print("the file queue is ", filename_queue)
+    dataset = tf.data.TFRecordDataset(filename_queue)
+
+    dataset = dataset.map(_parse_function)
 
     if dataset == "train":
-        train_dataset = train_dataset.batch(batch_size=10)
-        train_dataset = train_dataset.shuffle(buffer_size=10)
+        dataset = dataset.batch(batch_size=10)
+        dataset = dataset.shuffle(buffer_size=10)
 
-    iterator = train_dataset.make_initializable_iterator()
+    else:
+        dataset = dataset.batch(batch_size=1)
+
+    iterator = dataset.make_initializable_iterator()
+
+    with tf.Session() as sess:
+        sess.run(iterator.initializer)
+        nx = sess.run(iterator.get_next())
+        print(nx[0].shape)
 
     return iterator
 
 
 if __name__ == "__main__":
     # split_training_and_testing_sets()
-    read_TFRecord()
+    read_TFRecord("validation")
