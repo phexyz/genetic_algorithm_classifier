@@ -100,5 +100,6 @@ def read_TFRecord(dataset_name="train"):
 
 
 if __name__ == "__main__":
+    pass
     # split_training_and_testing_sets()
-    read_TFRecord("validation")
+    # read_TFRecord("validation")
