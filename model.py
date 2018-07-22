@@ -1,6 +1,5 @@
 from data import *
 import tensorflow as tf
-from tensorflow.python import debug as tf_debug
 import numpy as np
 import os
 import datetime
@@ -19,13 +18,13 @@ def xavier_init(shape, name='', uniform=True):
 
     return tf.Variable(init_value, name=name)
 
-def get_weights_bias(parameters, layer_name):
 
+def get_weights_bias(parameters, layer_name):
     if "fc" in layer_name:
 
         if "8" in layer_name:
             weights = xavier_init(shape=[parameters[layer_name + "_W"].shape[0], 5], name="weights")
-            bias = xavier_init(shape=[5,], name="bias")
+            bias = xavier_init(shape=[5, ], name="bias")
         else:
             weights = tf.Variable(parameters[layer_name + "_W"], name="{}/weights".format(layer_name))
             bias = tf.Variable(parameters[layer_name + "_b"], name="{}/bias".format(layer_name))
@@ -38,28 +37,26 @@ def get_weights_bias(parameters, layer_name):
 
 
 def conv(input, layer_name, weights_bias, activation="relu", pool=False):
-
     with tf.variable_scope(layer_name):
         weights, bias = weights_bias
 
-        conv_no_bias = tf.nn.conv2d(input=input, filter=weights, strides=[1, 1, 1, 1], padding="SAME", name="without_bias")
+        conv_no_bias = tf.nn.conv2d(input=input, filter=weights, strides=[1, 1, 1, 1], padding="SAME",
+                                    name="without_bias")
         conv_z = tf.nn.bias_add(conv_no_bias, bias, name="bias_add")
         conv_a = tf.nn.relu(conv_z, name='relu')
 
         if pool:
             print("pool")
-            conv_pool = tf.layers.max_pooling2d(conv_a, pool_size=[2,2], strides=2)
+            conv_pool = tf.layers.max_pooling2d(conv_a, pool_size=[2, 2], strides=2)
             return conv_pool
 
     return conv_a
 
 
 def dense(input, layer_name, weights_bias, activation='relu', output=False):
-
     print("dense layer {}".format(layer_name))
 
     with tf.variable_scope(layer_name):
-
 
         print("1")
         if output:
@@ -70,7 +67,7 @@ def dense(input, layer_name, weights_bias, activation='relu', output=False):
             # weights = tf.get_variable(name="weights", shape=[shape_pre_layer[1], 5], dtype=tf.float32,
             #                           initializer=tf.initializers.)
             print("4")
-            bias = xavier_init(shape=[5,], name="bias")
+            bias = xavier_init(shape=[5, ], name="bias")
             # bias = tf.get_variable(name="bias", shape=[5, ], dtype=tf.float32)
             print("5")
         else:
@@ -137,7 +134,6 @@ class Vgg16(object):
         self.Y = self.batch[1]
         self.loss = tf.losses.softmax_cross_entropy(self.Y, self.Y_hat)
 
-
     def add_summery(self):
 
         root_logdir = "tf_logs"
@@ -145,16 +141,20 @@ class Vgg16(object):
         self.loss_summary = tf.summary.scalar(name="loss", tensor=self.loss)
         self.file_writer = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
 
-
     def save_mode(self):
 
+        if not os.path.exists("model"):
+            os.makedirs("model")
         saver = tf.train.Saver()
-        saver.save(self.sess, os.path.join(os.getcwd(), "model"))
+        saver.save(self.sess, os.path.join(os.getcwd(), "model/"))
 
     def load_model(self):
 
+        mode_root_dir = "./models"
+        sub_dir = "07-19-2018"
+
         saver = tf.train.Saver()
-        saver.restore(self.sess, "model")
+        saver.restore(self.sess, os.path.join)
 
     def train(self):
 
@@ -171,30 +171,33 @@ class Vgg16(object):
         self.sess.run(tf.local_variables_initializer())
 
         self.add_summery()
-        print(self.sess.run(tf.report_uninitialized_variables()))
+        print("------------------------------------------------------------------")
+        for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES):
+            print(var.name)
 
-        num_epochs = 1000
-        for epoch in range(num_epochs):
-            print("epoch {}".format(epoch))
-            self.sess.run(self.iterator.initializer)
+    #         print(self.sess.run(tf.report_uninitialized_variables()))
 
-            num_iter = 0
-            try:
-                while True:
-                    num_iter += 1
-                    loss, summary, _ = self.sess.run([self.loss, self.loss_summary, self.train_op])
-                    self.file_writer.add_summary(summary)
+    #         num_epochs = 1000
+    #         for epoch in range(num_epochs):
+    #             print("epoch {}".format(epoch))
+    #             self.sess.run(self.iterator.initializer)
 
-                    with open("log.txt", "a+") as f:
-                        f.write("\n{}, {}".format(loss, tf.train.get_global_step()))
+    #             num_iter = 0
+    #             try:
+    #                 while True:
+    #                     num_iter += 1
+    #                     loss, summary, _ = self.sess.run([self.loss, self.loss_summary, self.train_op])
+    #                     self.file_writer.add_summary(summary)
+    #                     print num_iter,
+    #                     download_folder("model")
 
-            except tf.errors.OutOfRangeError:
-                pass
+    #             except tf.errors.OutOfRangeError:
+    #                 pass
 
-            if epoch % 100 == 0:
+    #             if epoch % 50 == 0 and epoch > 0:
 
-                self.save_mode()
-
+    #               self.save_mode()
+    # #               upload_folder_to_s3("model")
 
     def test(self):
 
@@ -213,9 +216,7 @@ class Vgg16(object):
         except tf.errors.OutOfRangeError:
             pass
 
-
         print(accuracy / counter)
-
 
 
     def predict(self, input):
