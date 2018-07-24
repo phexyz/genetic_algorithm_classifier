@@ -1,122 +1,40 @@
 from data import *
+from s3_functions import *
+from utils import *
 import tensorflow as tf
-import numpy as np
 import os
 import datetime
 
-
-def xavier_init(shape, name='', uniform=True):
-    num_input = sum(shape[:-1])
-    num_output = shape[-1]
-
-    if uniform:
-        init_range = tf.sqrt(6.0 / (num_input + num_output))
-        init_value = tf.random_uniform(shape=shape, minval=-init_range, maxval=init_range)
-    else:
-        stddev = tf.sqrt(3.0 / (num_input + num_output))
-        init_value = tf.truncated_normal(shape=shape, stddev=stddev)
-
-    return tf.Variable(init_value, name=name)
-
-
-def get_weights_bias(parameters, layer_name):
-    if "fc" in layer_name:
-
-        if "8" in layer_name:
-            weights = xavier_init(shape=[parameters[layer_name + "_W"].shape[0], 5], name="weights")
-            bias = xavier_init(shape=[5, ], name="bias")
-        else:
-            weights = tf.Variable(parameters[layer_name + "_W"], name="{}/weights".format(layer_name))
-            bias = tf.Variable(parameters[layer_name + "_b"], name="{}/bias".format(layer_name))
-
-    else:
-        weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
-        bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
-
-    return weights, bias
-
-
-def conv(input, layer_name, weights_bias, activation="relu", pool=False):
-    with tf.variable_scope(layer_name):
-        weights, bias = weights_bias
-
-        conv_no_bias = tf.nn.conv2d(input=input, filter=weights, strides=[1, 1, 1, 1], padding="SAME",
-                                    name="without_bias")
-        conv_z = tf.nn.bias_add(conv_no_bias, bias, name="bias_add")
-        conv_a = tf.nn.relu(conv_z, name='relu')
-
-        if pool:
-            print("pool")
-            conv_pool = tf.layers.max_pooling2d(conv_a, pool_size=[2, 2], strides=2)
-            return conv_pool
-
-    return conv_a
-
-
-def dense(input, layer_name, weights_bias, activation='relu', output=False):
-    print("dense layer {}".format(layer_name))
-
-    with tf.variable_scope(layer_name):
-
-        print("1")
-        if output:
-            print("2")
-            shape_pre_layer = input.get_shape().as_list()
-            print("3")
-            weights = xavier_init(shape=[shape_pre_layer[1], 5], name="weights")
-            # weights = tf.get_variable(name="weights", shape=[shape_pre_layer[1], 5], dtype=tf.float32,
-            #                           initializer=tf.initializers.)
-            print("4")
-            bias = xavier_init(shape=[5, ], name="bias")
-            # bias = tf.get_variable(name="bias", shape=[5, ], dtype=tf.float32)
-            print("5")
-        else:
-            weights, bias = weights_bias
-
-        dense_no_bias = tf.matmul(input, weights)
-        print("9")
-        dense_z = tf.nn.bias_add(dense_no_bias, bias)
-        print("10")
-        if activation == None:
-            print("11")
-            return dense_z
-
-        print("12")
-        dense_a = tf.nn.relu(dense_z, 'relu')
-        print("13")
-    return dense_a
-
-
-def load_weights():
-    file = np.load("vgg16_weights.npz")
-    keys = file.keys()
-
-    for key in keys:
-        print(file[key].shape)
-        print(key)
-
-    print(len(keys))
-    return file
-
+# This is helpful for running the script on Google Colab as it resets all the tensorflow variables
+tf.reset_default_graph()
 
 class Vgg16(object):
+    """This is the Vgg16 that can train and test"""
 
     def __init__(self):
         self.build_model(load_weights())
 
     def build_model(self, parameters):
+        """This function constructs the skeleton of the model"""
 
+        # This section sets up tf.data.iterator to input data
         self.train_iterator = read_TFRecord("train")
         self.test_iterator = read_TFRecord("validation")
+
+        self.pred_input = tf.placeholder(dtype=tf.float32)
+
 
         self.handle = tf.placeholder(tf.string, shape=[])
         self.iterator = tf.data.Iterator.from_string_handle(
             self.handle, self.train_iterator.output_types)
         self.sess = tf.Session()
 
+        # The iterator to be used depends on whose handle is used. This is passed through feed_dict in
+        # tf.Session.run
         self.test_iterator_handle = self.sess.run(self.test_iterator.string_handle())
         self.train_iterator_handle = self.sess.run(self.train_iterator.string_handle())
 
+        # This is the input from the iterator
         self.batch = self.iterator.get_next()
 
         self.X = self.batch[0]
@@ -136,88 +54,90 @@ class Vgg16(object):
         self.conv5_3_flatten = tf.contrib.layers.flatten(self.conv5_3)
         self.fc6 = dense(self.conv5_3_flatten, "fc6", get_weights_bias(parameters, "fc6"))
         self.fc7 = dense(self.fc6, "fc7", get_weights_bias(parameters, "fc7"))
-        self.fc8 = dense(self.fc7, "fc8", get_weights_bias(parameters, "fc8"), output=True)
+        self.fc8 = dense(self.fc7, "fc8", get_weights_bias(parameters, "fc8", output=True))
         self.Y_hat = tf.nn.softmax(self.fc8, name="softmax_output")
 
         self.Y = self.batch[1]
-        self.loss = tf.losses.softmax_cross_entropy(self.Y, self.Y_hat)
 
-        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8") + \
-                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc7") + \
-                               tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc6")
+        self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=self.Y, logits=self.fc8))
 
+        self.train_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="fc8")
+
+        # creates tf.train.saver to load and save trained model
         self.save_mode()
-        self.load_model()
 
-    def add_summery(self):
+    def add_summery(self, root_logdir):
+        """This function adds summary"""
 
-        root_logdir = "tf_logs"
         log_dir = os.path.join(root_logdir, str(datetime.datetime.now()))
         self.loss_summary = tf.summary.scalar(name="loss", tensor=self.loss)
         self.file_writer = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
 
     def save_mode(self):
+        """This function creates a saver"""
 
         if not os.path.exists("model"):
             os.makedirs("model")
         self.saver = tf.train.Saver(var_list=self.train_variables)
 
-    def load_model(self):
+    def load_model(self, checkpoint_dir):
+        """This function loads a trained model"""
 
-        if os.path.exists("model/"):
-            self.saver.restore(self.sess, save_path="model/model")
+        if os.path.exists(checkpoint_dir):
+            self.saver.restore(self.sess, save_path="{}/model".format(checkpoint_dir))
         else:
-            print("model doesn't exist")
+            print("Model doesn't exist. Train new model")
 
-    def train(self):
+    def train(self, learning_rate, epoch_num, checkpoint_dir, summary_dir):
+        """This function trains the model"""
 
+        print("Here are the variables to be trained")
         for var in self.train_variables:
             print(var.name)
 
-        self.train_op = tf.train.AdamOptimizer(0.00075).minimize(self.loss, var_list=self.train_variables)
+        self.train_op = tf.train.AdamOptimizer(learning_rate).minimize(self.loss, var_list=self.train_variables)
 
-        self.sess.run(tf.global_variables_initializer())
-        self.add_summery()
+        self.sess.run([tf.global_variables_initializer()])
+        self.add_summery(summary_dir)
+        self.load_model(checkpoint_dir)
 
-        num_epochs = 1000
-        for epoch in range(num_epochs):
-            print("epoch {}".format(epoch))
-            self.sess.run(self.train_iterator.initializer)
+        for epoch in range(epoch_num):
+            print("epoch {} losses".format(epoch))
 
-            num_iter = 0
+            # Initialize the iterator at the beginning of each epoch
+            self.sess.run([self.train_iterator.initializer])
             try:
                 while True:
-                    num_iter += 1
                     loss, summary, _ = self.sess.run([self.loss, self.loss_summary, self.train_op],
-                                                     feed_dict={self.handle : self.train_iterator_handle})
+                                                     feed_dict={self.handle: self.train_iterator_handle})
                     self.file_writer.add_summary(summary)
-                    print num_iter,
-
-                    # download_folder("model")
+                    print loss,
 
             except tf.errors.OutOfRangeError:
                 pass
 
-            if epoch % 50 == 0:
+            if epoch % 50 == 0 and epoch != 0:
+                self.saver.save(self.sess, os.path.join(os.getcwd(), "{}/model".format(checkpoint_dir)))
 
-                self.saver.save(self.sess, os.path.join(os.getcwd(), "model/"))
+    def test(self, checkpoint_dir):
+        """This function goes through the test set"""
 
-                # upload_folder_to_s3("model")
-
-    def test(self):
-
-        self.batch_correct = tf.reduce_sum(tf.cast(tf.equal(tf.argmax(self.Y, -1), tf.argmax(self.Y_hat, -1)), tf.float32))
+        self.batch_correct = tf.reduce_sum(
+            tf.cast(tf.equal(tf.argmax(self.Y, -1), tf.argmax(self.Y_hat, -1)), tf.float32))
         accuracy = 0
         counter = 0
 
         self.sess.run([tf.global_variables_initializer(), self.test_iterator.initializer])
+        self.load_model(checkpoint_dir)
+
         try:
             while True:
-                batch_accuracy = self.sess.run(self.batch_correct, feed_dict={self.handle : self.test_iterator_handle})
+                batch_accuracy, Y, Y_hat = self.sess.run([self.batch_correct, self.Y, self.Y_hat],
+                                                         feed_dict={self.handle: self.test_iterator_handle})
+                print("batch accuracy", batch_accuracy, "counter", counter)
+
                 accuracy += batch_accuracy
                 counter += 1
-                print(counter)
-
 
         except tf.errors.OutOfRangeError:
             pass
@@ -225,23 +145,37 @@ class Vgg16(object):
         print("coutner", counter)
         print("accuracy", accuracy)
 
-    def predict(self, input):
+    def predict(self, input, checkpoint_dir):
+        """This function predicts a single image"""
 
-        self.X = tf.placeholder(dtype=tf.float32, shape=[None, 224, 224, 3], name="input")
-        self.prediction = tf.argmax(self.Y_hat)
+        inputs = os.listdir(input) if os.path.isdir(input) else [input]
 
-        self.sess.run(tf.global_variables_initializer())
-        prediction = self.sess.run(self.prediction, self.X)
+        from PIL import Image
+        for input in list(map(lambda x: os.path.join(input, x), inputs)):
 
-        return prediction
+            orig_img = Image.open(input)
+            resize_img = orig_img.resize((244, 244))
+            img_array = np.array(resize_img)
+
+            dataset_x = tf.data.Dataset.from_tensor_slices(tf.expand_dims(img_array, 0))
+            dataset_y = tf.data.Dataset.from_tensor_slices(tf.cast([0, 0, 0, 0, 0], tf.float32))
+            dataset = tf.data.Dataset.zip((dataset_x, dataset_y))
+            dataset = dataset.batch(1)
+            iterator = dataset.make_one_shot_iterator()
+            iterator_handle = self.sess.run(iterator.string_handle())
 
 
+            self.sess.run(tf.global_variables_initializer())
+            self.load_model(checkpoint_dir)
+            onehot_prediction = self.sess.run([self.Y_hat], feed_dict={self.handle : iterator_handle})
+            prediction = np.argmax(onehot_prediction)
 
-def main(argv):
 
-    model = Vgg16()
-    model.test()
+            prediction_map = {0:"daisy",
+                              1:"dandelion",
+                              2:"rose",
+                              3:"sunflower",
+                              4:"tulip"}
 
-
-if __name__ == '__main__':
-    tf.app.run()
+            print("VGG16 thinks this is a {}".format(prediction_map[prediction]))
+            resize_img.show()

@@ -3,12 +3,12 @@ import boto3
 import botocore
 from boto.s3.key import Key
 
+AWS_ACCESS_KEY_ID = 'AKIAICMGGEWQQEDSPKEA'
+AWS_SECRET_ACCESS_KEY = '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'
+BUCKET = 'google-colab-bucket'
 
 def upload_to_s3(filename, key):
     file = open(filename, "rb")
-    AWS_ACCESS_KEY_ID = 'AKIAIPDS6F23GBYYB2FQ'
-    AWS_SECRET_ACCESS_KEY = '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'
-    BUCKET = 'google-colab-bucket'
 
     s3 = boto3.resource('s3',
                         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -18,10 +18,6 @@ def upload_to_s3(filename, key):
 
 
 def upload_folder_to_s3(local_folder):
-    AWS_ACCESS_KEY_ID = 'AKIAIPDS6F23GBYYB2FQ'
-    AWS_SECRET_ACCESS_KEY = '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'
-    BUCKET = 'google-colab-bucket'
-
     s3 = boto3.resource('s3',
                         aws_access_key_id=AWS_ACCESS_KEY_ID,
                         aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
@@ -36,11 +32,6 @@ def upload_folder_to_s3(local_folder):
 
 def download_from_s3(file, key):
     # Create an S3 client
-
-    AWS_ACCESS_KEY_ID = 'AKIAIPDS6F23GBYYB2FQ'
-    AWS_SECRET_ACCESS_KEY = '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'
-    BUCKET = 'google-colab-bucket'
-
     s3 = boto3.resource('s3',
                         aws_access_key_id=AWS_ACCESS_KEY_ID,
                         aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
@@ -56,10 +47,6 @@ def download_from_s3(file, key):
 
 def download_folder_from_s3(local_folder, s3_folder):
     # Create an S3 client
-
-    AWS_ACCESS_KEY_ID = 'AKIAIPDS6F23GBYYB2FQ'
-    AWS_SECRET_ACCESS_KEY = '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'
-    BUCKET = 'google-colab-bucket'
 
     s3 = boto3.resource('s3',
                         aws_access_key_id=AWS_ACCESS_KEY_ID,
