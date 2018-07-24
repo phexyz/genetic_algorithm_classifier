@@ -1,4 +1,4 @@
-# flower_classifier
+# Flower Classifier
 This is a flower classifier for the kaggle competition.
 
 ## How to use the model
