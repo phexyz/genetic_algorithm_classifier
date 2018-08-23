@@ -1,5 +1,5 @@
 # Flower Classifier
-This is a flower classifier for the kaggle competition. The best accuracy currently is 85%.
+This is a flower classifier for the kaggle competition. The best accuracy is currently 85%.
 
 ## How to use the model
 ### Install required packages
