@@ -66,6 +66,10 @@ class Vgg16(object):
         # creates tf.train.saver to load and save trained model
         self.save_mode()
 
+    def error_fn(self, value):
+
+        self.sess.run(self.loss, feed_dict=)
+
     def add_summery(self, root_logdir):
         """This function adds summary"""
 

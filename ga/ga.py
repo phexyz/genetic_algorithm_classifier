@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from individual import *
 
+
 class GAWorker(object):
 
     def __init__(self, argmap):
@@ -18,10 +19,11 @@ class GAWorker(object):
             7. max_generation
         """
 
+        self.argmap = argmap
         self.population = []
-        self.initialize_population(argmap)
+        self.initialize_population()
 
-    def evolve(self, argmap):
+    def evolve(self):
         """
         Parameters
         ----------
@@ -36,10 +38,10 @@ class GAWorker(object):
             8. standard
         """
 
-        max_generation = argmap["max_generation"]
-        population_size = argmap["population_size"]
-        mutation_power = argmap["mutation_power"]
-        truncation_size = argmap["truncation_size"]
+        max_generation = self.argmap["max_generation"]
+        population_size = self.argmap["population_size"]
+        mutation_power = self.argmap["mutation_power"]
+        truncation_size = self.argmap["truncation_size"]
 
         population = []
         elite = None
@@ -48,7 +50,7 @@ class GAWorker(object):
             for i in range(population_size - 1):
                 # i stands for individual
                 if g == 0:
-                    child = Individual(argmap)
+                    child = Individual(self.argmap)
                     population.append(child)
                 else:
                     # select the top T individual
@@ -58,32 +60,13 @@ class GAWorker(object):
                 self.evaluate_inidvidual(child)
 
             if g != 1:
-                population.append(Individual(argmap))
+                population.append(Individual(self.argmap))
             else:
                 population.append(elite)
 
             # sort individual by error
-            population.sort(key=lambda x:x.error)
+            population.sort(key=lambda x: x.error)
             elite = population[0]
-
-
-
-
-
-
-
-
-    def initialize_population(self, argmap):
-        """This function initialize a population of individuals with the same
-        dimension as sample_individual"""
-
-        for i in range(argmap["population_size"]):
-            self.population.append(Individual(argmap))
-
-
-    def mutate_population(self, potential_parents):
-        """This function mutates the population"""
-        pass
 
 
     def mutate_individual(self, individual):
@@ -91,25 +74,13 @@ class GAWorker(object):
         pass
 
 
-    def evaluate_population(self):
-        """This function evaluates the error of the population"""
-        pass
-
-
     def evaluate_inidvidual(self, individual):
         """This function evaluates the error of one individual"""
-        pass
-
-
-    def select_population(self):
-        """This function selects a new generation of individuals from the
-        population"""
-        pass
+        error_fn = self.argmap["error_fn"]
+        individual.error = error_fn(individual.value)
 
 
     def select_individual(self, individual):
         """This function determines whether an individual should be selected
         for reproduction."""
         pass
-
-
