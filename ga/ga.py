@@ -17,6 +17,7 @@ class GAWorker(object):
             5. truncation_size
             6. mutation_power
             7. max_generation
+            8. standard
         """
 
         self.argmap = argmap
@@ -55,9 +56,9 @@ class GAWorker(object):
                 else:
                     # select the top T individual
                     parent = population[np.random.randint(0, truncation_size)]
-                    child = self.mutate_individual(parent)
+                    child = parent.mutate_individual(argmap)
                 # evaluate individual
-                self.evaluate_inidvidual(child)
+                child.evaluate(argmap)
 
             if g != 1:
                 population.append(Individual(self.argmap))
@@ -68,19 +69,3 @@ class GAWorker(object):
             population.sort(key=lambda x: x.error)
             elite = population[0]
 
-
-    def mutate_individual(self, individual):
-        """This function mutates one individual"""
-        pass
-
-
-    def evaluate_inidvidual(self, individual):
-        """This function evaluates the error of one individual"""
-        error_fn = self.argmap["error_fn"]
-        individual.error = error_fn(individual.value)
-
-
-    def select_individual(self, individual):
-        """This function determines whether an individual should be selected
-        for reproduction."""
-        pass

@@ -23,7 +23,6 @@ class Vgg16(object):
 
         self.pred_input = tf.placeholder(dtype=tf.float32)
 
-
         self.handle = tf.placeholder(tf.string, shape=[])
         self.iterator = tf.data.Iterator.from_string_handle(
             self.handle, self.train_iterator.output_types)
@@ -34,27 +33,30 @@ class Vgg16(object):
         self.test_iterator_handle = self.sess.run(self.test_iterator.string_handle())
         self.train_iterator_handle = self.sess.run(self.train_iterator.string_handle())
 
+        # parameters
+        self.parameters = tf.TensorArray(dtype=tf.float32, size=None, dynamic_size=True, tensor_array_name="all parameters")
         # This is the input from the iterator
         self.batch = self.iterator.get_next()
+        self.parameters.concat
 
         self.X = self.batch[0]
-        self.conv1_1 = conv(tf.cast(self.X, dtype=tf.float32), "conv1_1", get_weights_bias(parameters, "conv1_1"))
-        self.conv1_2 = conv(self.conv1_1, "conv1_2", get_weights_bias(parameters, "conv1_2"), pool=True)
-        self.conv2_1 = conv(self.conv1_2, "conv2_1", get_weights_bias(parameters, "conv2_1"))
-        self.conv2_2 = conv(self.conv2_1, "conv2_2", get_weights_bias(parameters, "conv2_2"), pool=True)
-        self.conv3_1 = conv(self.conv2_2, "conv3_1", get_weights_bias(parameters, "conv3_1"))
-        self.conv3_2 = conv(self.conv3_1, "conv3_2", get_weights_bias(parameters, "conv3_2"))
-        self.conv3_3 = conv(self.conv3_2, "conv3_3", get_weights_bias(parameters, "conv3_3"), pool=True)
-        self.conv4_1 = conv(self.conv3_3, "conv4_1", get_weights_bias(parameters, "conv4_1"))
-        self.conv4_2 = conv(self.conv4_1, "conv4_2", get_weights_bias(parameters, "conv4_2"))
-        self.conv4_3 = conv(self.conv4_2, "conv4_3", get_weights_bias(parameters, "conv4_3"), pool=True)
-        self.conv5_1 = conv(self.conv4_3, "conv5_1", get_weights_bias(parameters, "conv5_1"))
-        self.conv5_2 = conv(self.conv5_1, "conv5_2", get_weights_bias(parameters, "conv5_2"))
-        self.conv5_3 = conv(self.conv5_2, "conv5_3", get_weights_bias(parameters, "conv5_3"), pool=True)
+        self.conv1_1 = conv(tf.cast(self.X, dtype=tf.float32), "conv1_1")
+        self.conv1_2 = conv(self.conv1_1, "conv1_2", pool=True)
+        self.conv2_1 = conv(self.conv1_2, "conv2_1")
+        self.conv2_2 = conv(self.conv2_1, "conv2_2", pool=True)
+        self.conv3_1 = conv(self.conv2_2, "conv3_1")
+        self.conv3_2 = conv(self.conv3_1, "conv3_2")
+        self.conv3_3 = conv(self.conv3_2, "conv3_3", pool=True)
+        self.conv4_1 = conv(self.conv3_3, "conv4_1")
+        self.conv4_2 = conv(self.conv4_1, "conv4_2")
+        self.conv4_3 = conv(self.conv4_2, "conv4_3", pool=True)
+        self.conv5_1 = conv(self.conv4_3, "conv5_1")
+        self.conv5_2 = conv(self.conv5_1, "conv5_2")
+        self.conv5_3 = conv(self.conv5_2, "conv5_3", pool=True)
         self.conv5_3_flatten = tf.contrib.layers.flatten(self.conv5_3)
-        self.fc6 = dense(self.conv5_3_flatten, "fc6", get_weights_bias(parameters, "fc6"))
-        self.fc7 = dense(self.fc6, "fc7", get_weights_bias(parameters, "fc7"))
-        self.fc8 = dense(self.fc7, "fc8", get_weights_bias(parameters, "fc8", output=True))
+        self.fc6 = dense(self.conv5_3_flatten, "fc6")
+        self.fc7 = dense(self.fc6, "fc7")
+        self.fc8 = dense(self.fc7, "fc8")
         self.Y_hat = tf.nn.softmax(self.fc8, name="softmax_output")
 
         self.Y = self.batch[1]

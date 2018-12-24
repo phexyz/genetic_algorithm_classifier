@@ -17,35 +17,31 @@ def xavier_init(shape, name='', uniform=True):
     return tf.Variable(init_value, name=name, trainable=True)
 
 
-def get_weights_bias(parameters, layer_name, output=False):
+def getWeightsBiasShape(parameters, layer_name):
     """This function gets the weights and bias for a given layer whether it be initialization or obtaining weights
         from trained model"""
 
+    weightsShape = parameters[layer_name + "_W"].shape
+    biasShape = parameters[layer_name + "_b"].shape
+
     # fc stands for fully connected layer
-    if "fc" in layer_name:
-
-        if output:
-            weights = xavier_init(shape=[parameters[layer_name + "_W"].shape[0], 5], name="{}/weights".format(layer_name))
-            bias = xavier_init(shape=[5, ], name="{}/bias".format(layer_name))
-
-        else:
-            weights = tf.Variable(parameters[layer_name + "_W"], name="{}/weights".format(layer_name))
-            bias = tf.Variable(parameters[layer_name + "_b"], name="{}/bias".format(layer_name))
-
-    else:
-        weights = tf.constant(parameters[layer_name + "_W"], dtype=tf.float32, name="{}/weights".format(layer_name))
-        bias = tf.constant(parameters[layer_name + "_b"], dtype=tf.float32, name="{}/bias".format(layer_name))
-
-    return weights, bias
+    if layer_name == "fc8":
+        weightsShape = (parameters[layer_name + "_W"].shape[0], 5)
+        biasShape = (5, )
 
 
-def conv(input, layer_name, weights_bias, activation="relu", pool=False):
+    return weightsShape, biasShape
+
+
+def conv(input, layer_name, activation="relu", pool=False):
     """This function is used to build a layer of convolution including the pooling and pooling layer"""
 
     print("convolution layer {0} {1} pooling layer".format(layer_name, "with" if pool else "without"))
 
     with tf.variable_scope(layer_name):
-        weights, bias = weights_bias
+        weightsShape, biasShape = getWeightsBiasShape(layer_name)
+        weights = tf.placeholder(dtype=tf.float32, shape=weightsShape)
+        bias = tf.placeholder(dtype=tf.float32, shape=biasShape)
 
         conv_no_bias = tf.nn.conv2d(input=input, filter=weights, strides=[1, 1, 1, 1], padding="SAME",
                                     name="without_bias")
@@ -65,7 +61,9 @@ def dense(input, layer_name, weights_bias, activation='relu'):
     print("dense layer {}".format(layer_name))
 
     with tf.variable_scope(layer_name):
-        weights, bias = weights_bias
+        weightsShape, biasShape = getWeightsBiasShape(layer_name)
+        weights = tf.placeholder(dtype=tf.float32, shape=weightsShape)
+        bias = tf.placeholder(dtype=tf.float32, shape=biasShape)
 
         dense_no_bias = tf.matmul(input, weights)
         dense_z = tf.nn.bias_add(dense_no_bias, bias)
@@ -74,14 +72,44 @@ def dense(input, layer_name, weights_bias, activation='relu'):
             return dense_z
 
         dense_a = tf.nn.relu(dense_z, 'relu')
-        return dense_a
+        return dense_z
 
 
 def load_weights():
     """This function loads the weights from vgg16"""
 
-    file = np.load("vgg16_weights.npz")
-    return file
+    return {"conv4_3_W" : (3, 3, 512, 512)
+            "conv5_1_b" : (512,)
+            "conv1_2_b" : (64,)
+            "conv5_2_b" : (512,)
+            "conv1_1_W" : (3, 3, 3, 64)
+            "conv5_3_b" : (512,)
+            "conv5_2_W" : (3, 3, 512, 512)
+            "conv5_3_W" : (3, 3, 512, 512)
+            "conv1_1_b" : (64,)
+            "fc7_b" : (4096,)
+            "conv5_1_W" : (3, 3, 512, 512)
+            "conv1_2_W" : (3, 3, 64, 64)
+            "conv3_2_W" : (3, 3, 256, 256)
+            "conv4_2_b" : (512,)
+            "conv4_1_b" : (512,)
+            "conv3_3_W" : (3, 3, 256, 256)
+            "conv2_1_b" : (128,)
+            "conv3_1_b" : (256,)
+            "conv2_2_W" : (3, 3, 128, 128)
+            "fc6_b" : (4096,)
+            "fc8_b" : (1000,)
+            "conv4_3_b" : (512,)
+            "conv2_2_b" : (128,)
+            "fc6_W" : (25088, 4096)
+            "fc8_W" : (4096, 1000)
+            "fc7_W" : (4096, 4096)
+            "conv3_2_b" : (256,)
+            "conv4_2_W" : (3, 3, 512, 512)
+            "conv3_3_b" : (256,)
+            "conv3_1_W" : (3, 3, 128, 256)
+            "conv2_1_W" : (3, 3, 64, 128)
+            "conv4_1_W" : (3, 3, 256, 512)}
 
 
 def mnist_iterator():
