@@ -17,33 +17,74 @@ def xavier_init(shape, name='', uniform=True):
     return tf.Variable(init_value, name=name, trainable=True)
 
 
-def getWeightsBiasShape(parameters, layer_name):
-    """This function gets the weights and bias for a given layer whether it be initialization or obtaining weights
-        from trained model"""
+def getWeightsBiasShape(layer_name):
+    """This function gets the weights and bias for a given layer whether it be
+    initialization or obtaining weights from trained model"""
 
-    weightsShape = parameters[layer_name + "_W"].shape
-    biasShape = parameters[layer_name + "_b"].shape
+    parameters = {"conv4_3_W" : (3, 3, 512, 512)
+            , "conv5_1_b" : (512,)
+            , "conv1_2_b" : (64,)
+            , "conv5_2_b" : (512,)
+            , "conv1_1_W" : (3, 3, 3, 64)
+            , "conv5_3_b" : (512,)
+            , "conv5_2_W" : (3, 3, 512, 512)
+            , "conv5_3_W" : (3, 3, 512, 512)
+            , "conv1_1_b" : (64,)
+            , "fc7_b" : (4096,)
+            , "conv5_1_W" : (3, 3, 512, 512)
+            , "conv1_2_W" : (3, 3, 64, 64)
+            , "conv3_2_W" : (3, 3, 256, 256)
+            , "conv4_2_b" : (512,)
+            , "conv4_1_b" : (512,)
+            , "conv3_3_W" : (3, 3, 256, 256)
+            , "conv2_1_b" : (128,)
+            , "conv3_1_b" : (256,)
+            , "conv2_2_W" : (3, 3, 128, 128)
+            , "fc6_b" : (4096,)
+            , "fc8_b" : (1000,)
+            , "conv4_3_b" : (512,)
+            , "conv2_2_b" : (128,)
+            , "fc6_W" : (25088, 4096)
+            , "fc8_W" : (4096, 1000)
+            , "fc7_W" : (4096, 4096)
+            , "conv3_2_b" : (256,)
+            , "conv4_2_W" : (3, 3, 512, 512)
+            , "conv3_3_b" : (256,)
+            , "conv3_1_W" : (3, 3, 128, 256)
+            , "conv2_1_W" : (3, 3, 64, 128)
+            , "conv4_1_W" : (3, 3, 256, 512)}
+
+
+    weightsShape = parameters[layer_name + "_W"]
+    biasShape = parameters[layer_name + "_b"]
 
     # fc stands for fully connected layer
     if layer_name == "fc8":
-        weightsShape = (parameters[layer_name + "_W"].shape[0], 5)
+        weightsShape = (parameters[layer_name + "_W"][0], 5)
         biasShape = (5, )
-
 
     return weightsShape, biasShape
 
 
 def conv(input, layer_name, activation="relu", pool=False):
-    """This function is used to build a layer of convolution including the pooling and pooling layer"""
+    """This function is used to build a layer of convolution including
+    the pooling and pooling layer"""
 
-    print("convolution layer {0} {1} pooling layer".format(layer_name, "with" if pool else "without"))
+    print("convolution layer {0} {1} pooling layer".format(layer_name,
+        "with" if pool else "without"))
 
     with tf.variable_scope(layer_name):
         weightsShape, biasShape = getWeightsBiasShape(layer_name)
-        weights = tf.placeholder(dtype=tf.float32, shape=weightsShape)
-        bias = tf.placeholder(dtype=tf.float32, shape=biasShape)
+        weights = tf.placeholder(dtype=tf.float32, shape=weightsShape,
+                                name="weights")
+        bias = tf.placeholder(dtype=tf.float32, shape=biasShape,
+                                name="bias")
+        if "fc" in layer_name:
+            tf.add_to_collection(name="parameters", value=weights)
+            tf.add_to_collection(name="parameters", value=bias)
 
-        conv_no_bias = tf.nn.conv2d(input=input, filter=weights, strides=[1, 1, 1, 1], padding="SAME",
+        conv_no_bias = tf.nn.conv2d(input=input, filter=weights,
+                                    strides=[1, 1, 1, 1], padding="SAME",
                                     name="without_bias")
         conv_z = tf.nn.bias_add(conv_no_bias, bias, name="bias_add")
         conv_a = tf.nn.relu(conv_z, name='relu')
@@ -55,15 +96,19 @@ def conv(input, layer_name, activation="relu", pool=False):
         return conv_a
 
 
-def dense(input, layer_name, weights_bias, activation='relu'):
+def dense(input, layer_name, activation='relu'):
     """This function is used to build a fully connected layer and pooling layer"""
 
     print("dense layer {}".format(layer_name))
 
     with tf.variable_scope(layer_name):
         weightsShape, biasShape = getWeightsBiasShape(layer_name)
-        weights = tf.placeholder(dtype=tf.float32, shape=weightsShape)
-        bias = tf.placeholder(dtype=tf.float32, shape=biasShape)
+        weights = tf.placeholder(dtype=tf.float32, shape=weightsShape,
+                                name="weights")
+        bias = tf.placeholder(dtype=tf.float32, shape=biasShape,
+                                name="bias")
+        tf.add_to_collection(name="parameters", value=weights)
+        tf.add_to_collection(name="parameters", value=bias)
 
         dense_no_bias = tf.matmul(input, weights)
         dense_z = tf.nn.bias_add(dense_no_bias, bias)
@@ -79,38 +124,43 @@ def load_weights():
     """This function loads the weights from vgg16"""
 
     return {"conv4_3_W" : (3, 3, 512, 512)
-            "conv5_1_b" : (512,)
-            "conv1_2_b" : (64,)
-            "conv5_2_b" : (512,)
-            "conv1_1_W" : (3, 3, 3, 64)
-            "conv5_3_b" : (512,)
-            "conv5_2_W" : (3, 3, 512, 512)
-            "conv5_3_W" : (3, 3, 512, 512)
-            "conv1_1_b" : (64,)
-            "fc7_b" : (4096,)
-            "conv5_1_W" : (3, 3, 512, 512)
-            "conv1_2_W" : (3, 3, 64, 64)
-            "conv3_2_W" : (3, 3, 256, 256)
-            "conv4_2_b" : (512,)
-            "conv4_1_b" : (512,)
-            "conv3_3_W" : (3, 3, 256, 256)
-            "conv2_1_b" : (128,)
-            "conv3_1_b" : (256,)
-            "conv2_2_W" : (3, 3, 128, 128)
-            "fc6_b" : (4096,)
-            "fc8_b" : (1000,)
-            "conv4_3_b" : (512,)
-            "conv2_2_b" : (128,)
-            "fc6_W" : (25088, 4096)
-            "fc8_W" : (4096, 1000)
-            "fc7_W" : (4096, 4096)
-            "conv3_2_b" : (256,)
-            "conv4_2_W" : (3, 3, 512, 512)
-            "conv3_3_b" : (256,)
-            "conv3_1_W" : (3, 3, 128, 256)
-            "conv2_1_W" : (3, 3, 64, 128)
-            "conv4_1_W" : (3, 3, 256, 512)}
+            , "conv5_1_b" : (512,)
+            , "conv1_2_b" : (64,)
+            , "conv5_2_b" : (512,)
+            , "conv1_1_W" : (3, 3, 3, 64)
+            , "conv5_3_b" : (512,)
+            , "conv5_2_W" : (3, 3, 512, 512)
+            , "conv5_3_W" : (3, 3, 512, 512)
+            , "conv1_1_b" : (64,)
+            , "fc7_b" : (4096,)
+            , "conv5_1_W" : (3, 3, 512, 512)
+            , "conv1_2_W" : (3, 3, 64, 64)
+            , "conv3_2_W" : (3, 3, 256, 256)
+            , "conv4_2_b" : (512,)
+            , "conv4_1_b" : (512,)
+            , "conv3_3_W" : (3, 3, 256, 256)
+            , "conv2_1_b" : (128,)
+            , "conv3_1_b" : (256,)
+            , "conv2_2_W" : (3, 3, 128, 128)
+            , "fc6_b" : (4096,)
+            , "fc8_b" : (1000,)
+            , "conv4_3_b" : (512,)
+            , "conv2_2_b" : (128,)
+            , "fc6_W" : (25088, 4096)
+            , "fc8_W" : (4096, 1000)
+            , "fc7_W" : (4096, 4096)
+            , "conv3_2_b" : (256,)
+            , "conv4_2_W" : (3, 3, 512, 512)
+            , "conv3_3_b" : (256,)
+            , "conv3_1_W" : (3, 3, 128, 256)
+            , "conv2_1_W" : (3, 3, 64, 128)
+            , "conv4_1_W" : (3, 3, 256, 512)}
 
+
+def get_all_variables_with_name(var_name):
+    """This function gets the variable with var_name"""
+
+    return tf.get_default_graph().get_tensor_by_name(var_name + ":0")
 
 def mnist_iterator():
     """This function creates a mnist iterator that goes through mnist dataset"""

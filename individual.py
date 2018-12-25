@@ -2,25 +2,30 @@ import numpy as np
 
 class Individual(object):
 
-    def __init__(self, argmap):
+    def __init__(self, argmap, value=None):
         """
         Parameters
         ----------
         argmap should contains the following parameters:
             1. population_size
             2. initializer
-            3. error_function
-            4. truncation_size
-            5. mutation_power
-            6. max_generation
+            3. truncation_size
+            4. mutation_power
+            5. max_generation
+            6. name_to_shape
         """
 
-        self.value = {}
+        if not value:
+            self.value = {}
+            self.initialize_value(argmap["name_to_shape"])
+        else:
+            self.value = value
         self.error = None
 
-    def addLayer(self, layer_shape, layer_name):
+    def initialize_value(self, name_to_shape):
 
-        self.value[layer_name] = self.xavier_init(layer_shape)
+        for layer_name in name_to_shape.keys():
+            self.value[layer_name] = self.xavier_init(name_to_shape[layer_name])
 
 
     def xavier_init(self, layer_shape, uniform=False):
@@ -45,16 +50,12 @@ class Individual(object):
         # Not really sure whether epislon should be constant over one layer or constant over
         # individuals or over a generation.
 
-        for i in range(len(self.value)):
-            epsilon = np.random.normal(0, 1, self.value[i].shape)
-            self.value[i] += argmap["mutation_power"] * epsilon
-        return self
-
-    def evaluate(self, argmap):
-        """This function evalueates this individual"""
-
-        error_fn = argmap["error_fn"]
-        self.error = error_fn(self.value)
+        new_value = {}
+        for key in self.value.keys():
+            epsilon = np.random.normal(0, 1, size=self.value[key].shape)
+            new_value[key] = self.value[key] + epsilon
+        child = Individual(argmap=argmap, value=new_value)
+        return child
 
 
     def returnValue(self):
@@ -73,18 +74,17 @@ class Individual(object):
         print self.value
 
 
-argmap = {"population_size": 10,
-        "initializer": "xavier",
-        "error_fn":None,
-        "truncation_size":5,
-        "mutation_power":0.002,
-        "max_generation":50}
-ind = Individual(argmap)
-child = ind.mutate(argmap)
-child.print_value()
-child.printValueShape()
-layer_name = "conv1_1"
-layer_shape = (10, 10, 10)
-child.addLayer(layer_shape, layer_name)
-value = child.returnValue()
-print value.keys()
+# argmap = {"population_size": 10,
+#         "initializer": "xavier",
+#         "error_fn":None,
+#         "truncation_size":5,
+#         "mutation_power":0.002,
+#         "max_generation":50}
+# ind = Individual(argmap)
+# child = ind.mutate(argmap)
+# child.print_value()
+# child.printValueShape()
+# layer_name = "conv1_1"
+# layer_shape = (10, 10, 10)
+# value = child.returnValue()
+# print value.keys()
