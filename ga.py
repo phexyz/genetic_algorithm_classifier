@@ -59,7 +59,7 @@ class GAWorker(object):
                 else:
                     # select the top T individual
                     parent = population[np.random.randint(0, truncation_size)]
-                    child = parent.mutate(argmap)
+                    child = parent.mutate(self.argmap)
                 # evaluate individual
                 self.evaluate(child)
                 next_generation.append(child)
@@ -81,12 +81,3 @@ class GAWorker(object):
 
         print "-----------evalueate this individual-----------"
         individual.error = self.model.error_fn(individual.value)
-
-argmap = {"population_size": 4,
-        "initializer": "xavier",
-        "error_fn":None,
-        "truncation_size":2,
-        "mutation_power":0.002,
-        "max_generation":50}
-worker = GAWorker(argmap)
-worker.evolve()

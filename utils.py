@@ -21,7 +21,7 @@ def getWeightsBiasShape(layer_name):
     """This function gets the weights and bias for a given layer whether it be
     initialization or obtaining weights from trained model"""
 
-    parameters = {"conv1_1_W" : (3, 3, 3, 64)
+    parameters = {"conv1_1_W" : (3, 3, 1, 64)
             , "conv1_1_b" : (64,)
             , "conv1_2_W" : (3, 3, 64, 64)
             , "conv1_2_b" : (64,)
@@ -47,7 +47,7 @@ def getWeightsBiasShape(layer_name):
             , "conv5_2_b" : (512,)
             , "conv5_3_W" : (3, 3, 128, 512)
             , "conv5_3_b" : (512,)
-            , "fc6_W" : (25088, 4096)
+            , "fc6_W" : (50176, 4096)
             , "fc6_b" : (4096,)
             , "fc7_W" : (4096, 4096)
             , "fc7_b" : (4096,)
@@ -60,8 +60,8 @@ def getWeightsBiasShape(layer_name):
 
     # fc stands for fully connected layer
     if layer_name == "fc8":
-        weightsShape = (parameters[layer_name + "_W"][0], 5)
-        biasShape = (5, )
+        weightsShape = (parameters[layer_name + "_W"][0], 10)
+        biasShape = (10, )
 
     return weightsShape, biasShape
 
@@ -166,27 +166,7 @@ def load_weights():
             , "fc8_b" : (1000,)
             }
 
-def get_all_variables_with_name(var_name):
-    """This function gets the variable with var_name"""
+# def get_all_variables_with_name(var_name):
+#     """This function gets the variable with var_name"""
 
     return tf.get_default_graph().get_tensor_by_name(var_name + ":0")
-
-def mnist_iterator():
-    """This function creates a mnist iterator that goes through mnist dataset"""
-
-    # obtain dataset
-    train, test = tf.keras.datasets.mnist.load_data()
-    mnist_x, mnist_y = train
-
-    # create tf.dataset
-    dataset_x = tf.data.Dataset.from_tensor_slices(mnist_x)
-    dataset_y = tf.data.Dataset.from_tensor_slices(mnist_y)
-
-    dataset_x = dataset_x.batch(100)
-    dataset_y = dataset_y.batch(100)
-
-    # create iterator
-    iterator_y = dataset_y.make_initializable_iterator()
-    iterator_x = dataset_x.make_initializable_iterator()
-
-    return iterator_x, iterator_y
