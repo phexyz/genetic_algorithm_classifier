@@ -1,0 +1,6 @@
+boto
+boto3
+botocore
+Tensorflow
+numpy
+pillow
