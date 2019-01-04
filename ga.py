@@ -50,36 +50,39 @@ class GAWorker(object):
         for g in range(max_generation):
             # g stands for generation
             print "generation {}".format(g)
+            next_generation = []
             for i in range(population_size - 1):
                 # i stands for individual
                 print "individual {0}, population {1}".format(i, len(population))
                 if g == 0:
                     child = Individual(self.argmap)
-                    population.append(child)
                 else:
                     # select the top T individual
                     parent = population[np.random.randint(0, truncation_size)]
                     child = parent.mutate(argmap)
                 # evaluate individual
                 self.evaluate(child)
+                next_generation.append(child)
 
-            if g != 1:
-                population.append(Individual(self.argmap))
+            if g == 0:
+                next_generation.append(Individual(self.argmap))
             else:
-                population.append(elite)
+                next_generation.append(elite)
 
             print "Generation {0}, Error{1}".format(g, child.error)
             # sort individual by error
-            population.sort(key=lambda x: x.error)
-            elite = population[0]
+            next_generation.sort(key=lambda individual: individual.error)
+            elite = next_generation[0]
+            population = next_generation
 
 
     def evaluate(self, individual):
         """This function evaluates the individual """
 
+        print "-----------evalueate this individual-----------"
         individual.error = self.model.error_fn(individual.value)
 
-argmap = {"population_size": 2,
+argmap = {"population_size": 4,
         "initializer": "xavier",
         "error_fn":None,
         "truncation_size":2,

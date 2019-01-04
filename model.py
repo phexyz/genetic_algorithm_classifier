@@ -58,28 +58,28 @@ class Vgg16(object):
     def build_model(self, parameters):
         """This function constructs the skeleton of the model"""
 
-
         # This is the input from the iterator
         self.batch = self.iterator.get_next()
 
+        parameters = np.load("./vgg16_weights.npz")
         self.X = self.batch[0]
-        self.conv1_1 = conv(tf.cast(self.X, dtype=tf.float32), "conv1_1")
-        self.conv1_2 = conv(self.conv1_1, "conv1_2", pool=True)
-        self.conv2_1 = conv(self.conv1_2, "conv2_1")
-        self.conv2_2 = conv(self.conv2_1, "conv2_2", pool=True)
-        self.conv3_1 = conv(self.conv2_2, "conv3_1")
-        self.conv3_2 = conv(self.conv3_1, "conv3_2")
-        self.conv3_3 = conv(self.conv3_2, "conv3_3", pool=True)
-        self.conv4_1 = conv(self.conv3_3, "conv4_1")
-        self.conv4_2 = conv(self.conv4_1, "conv4_2")
-        self.conv4_3 = conv(self.conv4_2, "conv4_3", pool=True)
-        self.conv5_1 = conv(self.conv4_3, "conv5_1")
-        self.conv5_2 = conv(self.conv5_1, "conv5_2")
-        self.conv5_3 = conv(self.conv5_2, "conv5_3", pool=True)
+        self.conv1_1 = conv(tf.cast(self.X, dtype=tf.float32), "conv1_1", parameters=parameters)
+        self.conv1_2 = conv(self.conv1_1, "conv1_2", pool=True, parameters=parameters)
+        self.conv2_1 = conv(self.conv1_2, "conv2_1", parameters=parameters)
+        self.conv2_2 = conv(self.conv2_1, "conv2_2", pool=True, parameters=parameters)
+        self.conv3_1 = conv(self.conv2_2, "conv3_1", parameters=parameters)
+        self.conv3_2 = conv(self.conv3_1, "conv3_2", parameters=parameters)
+        self.conv3_3 = conv(self.conv3_2, "conv3_3", pool=True, parameters=parameters)
+        self.conv4_1 = conv(self.conv3_3, "conv4_1", parameters=parameters)
+        self.conv4_2 = conv(self.conv4_1, "conv4_2", parameters=parameters)
+        self.conv4_3 = conv(self.conv4_2, "conv4_3", pool=True, parameters=parameters)
+        self.conv5_1 = conv(self.conv4_3, "conv5_1", parameters=parameters)
+        self.conv5_2 = conv(self.conv5_1, "conv5_2", parameters=parameters)
+        self.conv5_3 = conv(self.conv5_2, "conv5_3", pool=True, parameters=parameters)
         self.conv5_3_flatten = tf.contrib.layers.flatten(self.conv5_3)
-        self.fc6 = dense(self.conv5_3_flatten, "fc6")
-        self.fc7 = dense(self.fc6, "fc7")
-        self.fc8 = dense(self.fc7, "fc8")
+        self.fc6 = dense(self.conv5_3_flatten, "fc6", placeholder=True)
+        self.fc7 = dense(self.fc6, "fc7", placeholder=True)
+        self.fc8 = dense(self.fc7, "fc8",placeholder=True)
         self.Y_hat = tf.nn.softmax(self.fc8, name="softmax_output")
 
         self.Y = self.batch[1]
@@ -112,6 +112,8 @@ class Vgg16(object):
             for key in value.keys():
                 self.feed_dict[self.name_variable_dict[key]] = value[key]
 
+        for key in self.feed_dict:
+            print key
         return self.sess.run(self.loss, feed_dict=self.feed_dict)
 
     def add_summery(self, root_logdir):
