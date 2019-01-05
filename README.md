@@ -1,41 +1,26 @@
-# Flower Classifier
-This is a flower classifier for the kaggle competition. The best accuracy is currently 85%.
+# Genetic Algorithm Classifier
+This is a genetic algorithm classifier for the MNIST dataset. 
 
 ## How to use the model
+### Create virtual environment using virtualenv
+```
+virtualenv ga_classifier
+```
 ### Install required packages
 ```
 pip -r install requirements.ext
 ```
 
 
-### Download dataset and trained model
+### Download the MNIST dataset
 ```
-python download.py
+python data/mnist.py
 ```
 
 ### Train the model
 ```
-python main.py --train True \
-               --test False \
-               --epoch number_epoch_to_be_trained \
-               --learning_rate learning_rate_in_training \
-               --checkpoint_dir directory_to_save_model 
-```
+python main.py
 
-### Test the model
 ```
-python main.py --train False \
-               --test True \
-               --epoch number_epoch_to_be_trained \
-               --learning_rate learning_rate_in_training \
-               --checkpoint_dir model_directory
-```
-### Use the model to evaluate images
-```
-python main.py --input_images_dir input_images'_directory \ 
-               --checkpoint_dir model_directory 
-```
---input_images_dir flag can receive a directory as well as the path to a single image.
-
-Have fun with flowers!
-
+### Hyperparameter configurations
+You can configure the hyperparameters by changing the argmap variable in the main.py file.

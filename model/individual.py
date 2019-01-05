@@ -72,19 +72,3 @@ class Individual(object):
     def print_value(self):
 
         print self.value
-
-
-# argmap = {"population_size": 10,
-#         "initializer": "xavier",
-#         "error_fn":None,
-#         "truncation_size":5,
-#         "mutation_power":0.002,
-#         "max_generation":50}
-# ind = Individual(argmap)
-# child = ind.mutate(argmap)
-# child.print_value()
-# child.printValueShape()
-# layer_name = "conv1_1"
-# layer_shape = (10, 10, 10)
-# value = child.returnValue()
-# print value.keys()

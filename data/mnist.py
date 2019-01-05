@@ -13,8 +13,8 @@ class MNIST(object):
                     ["test_labels","t10k-labels-idx1-ubyte.gz"]]
 
         self.data_dir = "./MNIST/"
-        # self.download_mnist()
-        # self.save_mnist()
+        self.download_mnist()
+        self.save_mnist()
 
     def download_mnist(self):
         base_url = "http://yann.lecun.com/exdb/mnist/"
